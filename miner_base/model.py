@@ -1,10 +1,14 @@
 import json
 import re
 from abc import abstractmethod
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Any, Union, Mapping, Callable, Awaitable, Iterable, Unpack
 
+from aiohttp import ClientResponse, BasicAuth, Fingerprint, ClientTimeout
+from aiohttp.client import SSLContext
+from aiohttp.typedefs import LooseHeaders, StrOrURL, LooseCookies, Query
 from loguru import logger
 from pydantic import BaseModel, Field
+from pydantic.dataclasses import dataclass
 
 from miner_base.exception import *
 
@@ -13,19 +17,139 @@ LOG_LEVEL = Literal['TRACE', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CR
 TSK_STATUS = Literal['initialized', 'queued', 'running', 'completed', 'canceled', 'failed']
 
 
-class CallAPIArgs(TypedDict, total=False):
-    """call_api的入参"""
-    api_name: str
-    url: Optional[str]
-    headers: Optional[dict]  # 替换
-    params: Optional[dict]
-    data: Optional[dict]
-    update_headers: Optional[dict]  # 更新
-    update_params: Optional[dict]
+@dataclass
+class State:
+    """脚本状态管理器"""
+    data: dict = Field({})
+
+    def get(self, key: str, default=None):
+        return self.data.get(key, default)
+
+    def __call__(self, key: str, default=None):
+        return self.get(key, default)
+
+    def set(self, key: str, value: Any) -> Any:
+        self.data[key] = value
+        return value
+
+    def clear(self):
+        return self.data.clear()
+
+
+class RequestOptions(TypedDict, total=False):
+    params: Query
+    data: Any
+    json: Any
+    cookies: Union[LooseCookies, None]
+    headers: Union[LooseHeaders, None]
+    skip_auto_headers: Union[Iterable[str], None]
+    auth: Union[BasicAuth, None]
+    allow_redirects: bool
+    max_redirects: int
+    compress: Union[str, bool, None]
+    chunked: Union[bool, None]
+    expect100: bool
+    raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]
+    read_until_eof: bool
+    proxy: Union[StrOrURL, None]
+    proxy_auth: Union[BasicAuth, None]
+    timeout: Union[ClientTimeout, None]
+    ssl: Union[SSLContext, bool, Fingerprint]
+    server_hostname: Union[str, None]
+    proxy_headers: Union[LooseHeaders, None]
+    trace_request_ctx: Union[Mapping[str, Any], None]
+    read_bufsize: Union[int, None]
+    auto_decompress: Union[bool, None]
+    max_line_size: Union[int, None]
+    max_field_size: Union[int, None]
+
+
+class APICaller(ABC):
+    """API调用 或发送网络请求
+    兼容 aiohttp"""
+
+    @abstractmethod
+    async def api(self, api_name: str,
+                  url: Optional[StrOrURL] = None,  # 更新
+                  headers: Optional[dict] = None,  # 替换
+                  params: Optional[dict] = None,
+                  data: Optional[dict] = None,
+                  update_headers: Optional[dict] = None,  # 更新
+                  update_params: Optional[dict] = None,
+                  **kwargs: Unpack[RequestOptions],
+                  ) -> str | dict:
+        """调用API函数"""
+        pass
+
+    @property
+    def headers(self) -> dict:
+        """与 aiohttp.ClientSession.headers() 方法一致 设置或读取headers"""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def request(
+            self,
+            method: str,
+            url: StrOrURL,
+            **kwargs: Unpack[RequestOptions],
+    ) -> "_RequestContextManager":
+        """与 aiohttp.ClientSession.request() 方法一致, 但是自带全局 aiohttp.ClientSession"""
+        ...
+
+    @abstractmethod
+    def get(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[RequestOptions],
+    ) -> "_RequestContextManager": ...
+
+    @abstractmethod
+    def options(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[RequestOptions],
+    ) -> "_RequestContextManager": ...
+
+    @abstractmethod
+    def head(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[RequestOptions],
+    ) -> "_RequestContextManager": ...
+
+    @abstractmethod
+    def post(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[RequestOptions],
+    ) -> "_RequestContextManager": ...
+
+    @abstractmethod
+    def put(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[RequestOptions],
+    ) -> "_RequestContextManager": ...
+
+    @abstractmethod
+    def patch(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[RequestOptions],
+    ) -> "_RequestContextManager": ...
+
+    @abstractmethod
+    def delete(
+            self,
+            url: StrOrURL,
+            **kwargs: Unpack[RequestOptions],
+    ) -> "_RequestContextManager": ...
 
 
 class StatusUpdater(ABC):
-    """状态更新器, 替换交互器中的logger"""
+    """状态更新器, 可替代logger, 用于将状态(日志等信息)共享给UI
+    success以上级别(warning, error, ...)的日志将展示在 GUI-任务状态栏; 其他日志(info, debug...)需要进入日志管理查看
+    """
 
     @abstractmethod
     def update(self, status: TSK_STATUS | None, level: LOG_LEVEL, msg: str, extra: dict, error: Exception = None):
