@@ -1,0 +1,9 @@
+[project]
+name = "miner_base"
+version = "0.1.0"
+description = "Base package of GFMiner project"
+readme = "README.md"
+dependencies = [
+    'pydantic',
+    'loguru',
+]
