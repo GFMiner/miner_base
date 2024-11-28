@@ -155,7 +155,7 @@ class StatusUpdater(ABC):
     def update(self, status: TSK_STATUS | None, level: LOG_LEVEL, msg: str, extra: dict, error: Exception = None):
         pass
 
-    def debug(self, msg: str, level: LOG_LEVEL = 'INFO', status: TSK_STATUS = None, extra: dict = None):
+    def debug(self, msg: str, level: LOG_LEVEL = 'DEBUG', status: TSK_STATUS = None, extra: dict = None):
         return self.update(status=status, level=level, msg=msg, extra=extra)
 
     def info(self, msg: str, level: LOG_LEVEL = 'INFO', status: TSK_STATUS = None, extra: dict = None):
