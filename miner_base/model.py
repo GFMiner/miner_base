@@ -228,13 +228,13 @@ class Script(BaseModel):
     """直接存储在session_state中,便于读写
     代表一个脚本对象, 在Interactor中实现业务逻辑
     """
-    api: list[ApiDefine] = Field([])
+    apis: list[ApiDefine] = Field([])
     funcs: list[FunctionDefine] = Field([])
     threads: list[ThreadDefine] = Field([])
     state: dict = Field({})
 
     def api_by_name(self, name: str) -> ApiDefine | None:
-        return next((x for x in self.api if x.name == name), None)
+        return next((x for x in self.apis if x.name == name), None)
 
     def func_by_name(self, name: str) -> FunctionDefine | None:
         return next((x for x in self.funcs if x.name == name), None)
