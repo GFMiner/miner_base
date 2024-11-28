@@ -3,39 +3,25 @@ Yescoin脚本示例
 """
 import asyncio
 from random import randint
-from typing import Callable, Awaitable, Any
 
-import aiohttp
-
-from miner_base.model import *
-from miner_base.exception import SessionException, ExecutorException, FatalExecutorException
-from miner_base.plugins import *
+from miner_base import *
 
 
-async def thread_task(
-        session: aiohttp.ClientSession,
-        args: dict,
-        updater: StatusUpdater,
-        call_api: Callable[[CallAPIArgs], Awaitable[dict | str]],
-        get_state: Callable[[str], Any],
-        set_state: Callable[[str, Any], dict],
-):
+async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, state: State, ):
     """ 任务线程
-    :param session: aiohttp.ClientSession
     :param args: 传入的参数
-    :param updater: 用于更新状态
-    :param call_api: 调用API函数
-    :param get_state: 获取线程间共享的状态; value = get_state('key')
-    :param set_state: 更新共享状态; set_state('key', value)
+    :param updater: 用于更新状态(相当于logger)
+    :param caller: 发起网络请求/调用API函数
+    :param state: 存储线程间共享的状态, 可以get或set
     :return: 不需要返回值
-    (在App中是以协程方式并发调用的)
+    脚本在App中将以 协程方式并发调用
     """
     settings = args
 
     # ===
     async def _get_account_info() -> dict:
         try:
-            response = await session.get(url='https://bi.yescoin.gold/account/getAccountInfo')
+            response = await caller.get(url='https://bi.yescoin.gold/account/getAccountInfo')
             response.raise_for_status()
             response_json = await response.json()
             profile_data = response_json['data']
@@ -46,7 +32,7 @@ async def thread_task(
 
     async def _get_game_info():
         try:
-            response = await session.get(url='https://bi.yescoin.gold/game/getGameInfo')
+            response = await caller.get(url='https://bi.yescoin.gold/game/getGameInfo')
             response.raise_for_status()
             response_json = await response.json()
             rst = response_json['data']
@@ -57,7 +43,7 @@ async def thread_task(
 
     async def _get_special_box_info():
         try:
-            response = await session.get(url='https://bi.yescoin.gold/game/getSpecialBoxInfo')
+            response = await caller.get(url='https://bi.yescoin.gold/game/getSpecialBoxInfo')
             response.raise_for_status()
             response_json = await response.json()
             special_box_info = response_json['data']
@@ -72,8 +58,8 @@ async def thread_task(
             box_type = special_box_info['recoveryBox']['boxType']
             taps = special_box_info['recoveryBox']['specialBoxTotalCount']
             await asyncio.sleep(delay=10)
-            response = await session.post(url='https://bi.yescoin.gold/game/collectSpecialBoxCoin',
-                                          json={'boxType': box_type, 'coinCount': taps})
+            response = await caller.post(url='https://bi.yescoin.gold/game/collectSpecialBoxCoin',
+                                         json={'boxType': box_type, 'coinCount': taps})
             response.raise_for_status()
             response_json = await response.json()
             if not response_json['data']:
@@ -86,7 +72,7 @@ async def thread_task(
 
     async def _send_taps(taps: int, ) -> bool:
         try:
-            response = await session.post(url='https://bi.yescoin.gold/game/collectCoin', json=taps)
+            response = await caller.post(url='https://bi.yescoin.gold/game/collectCoin', json=taps)
             response.raise_for_status()
             response_json = await response.json()
             if not response_json['data']:
@@ -99,7 +85,7 @@ async def thread_task(
 
     async def _get_boosts_info():
         try:
-            response = await session.get(url='https://bi.yescoin.gold/build/getAccountBuildInfo')
+            response = await caller.get(url='https://bi.yescoin.gold/build/getAccountBuildInfo')
             response.raise_for_status()
             response_json = await response.json()
             boosts_info = response_json['data']
@@ -110,7 +96,7 @@ async def thread_task(
 
     async def _apply_energy_boost():
         try:
-            response = await session.post(url='https://bi.yescoin.gold/game/recoverCoinPool')
+            response = await caller.post(url='https://bi.yescoin.gold/game/recoverCoinPool')
             response.raise_for_status()
             response_json = await response.json()
             return response_json['data']
@@ -121,7 +107,7 @@ async def thread_task(
 
     async def _apply_turbo_boost():
         try:
-            response = await session.post(url='https://bi.yescoin.gold/game/recoverSpecialBox')
+            response = await caller.post(url='https://bi.yescoin.gold/game/recoverSpecialBox')
             response.raise_for_status()
             response_json = await response.json()
             return response_json['data']
@@ -132,7 +118,7 @@ async def thread_task(
 
     async def _level_up(boost_id: int, ) -> bool:
         try:
-            response = await session.post(url='https://bi.yescoin.gold/build/levelUp', json=boost_id)
+            response = await caller.post(url='https://bi.yescoin.gold/build/levelUp', json=boost_id)
             response.raise_for_status()
             response_json = await response.json()
             return response_json['data']
@@ -144,16 +130,16 @@ async def thread_task(
     # ===
     active_turbo = False
     while True:
-        if get_state('profile_data') is None:  # 只有在登陆成功,且进入游戏获取data后才进行task
+        if state.get('profile_data') is None:  # 只有在登陆成功,且进入游戏获取data后才进行task
             await asyncio.sleep(2)
             continue
-        updater.info(f"on loop #")
-        balance = get_state('profile_data')['currentAmount']
+        updater.info(f"thread_task-on loop")
+        balance = state.get('profile_data')['currentAmount']
         try:
             # 刷新状态
             taps = randint(*settings['RANDOM_TAPS_COUNT'])
             game_data = await _get_game_info()
-            # game_data = await call_api(CallAPIArgs(api_name='get_game_info'))
+            # game_data = await call_api(RequestOptions(api_name='get_game_info'))
             available_energy = game_data['coinPoolLeftCount']
             coins_by_tap = game_data['singleCoinValue']
             if active_turbo:
@@ -166,7 +152,7 @@ async def thread_task(
             profile_data = await _get_account_info()
             if not profile_data or not status:
                 continue
-            args.profile_data = profile_data
+            state.set('profile_data', profile_data)
             new_balance = profile_data['currentAmount']
             calc_taps = new_balance - balance
             balance = new_balance
@@ -193,7 +179,7 @@ async def thread_task(
                     await asyncio.sleep(delay=5)
 
                     status = await _apply_energy_boost()
-                    # status = await call_api(CallAPIArgs(api_name='apply_energy_boost'))
+                    # status = await call_api(RequestOptions(api_name='apply_energy_boost'))
                     if status is True:
                         updater.success(f"能量升级 完成")
                         await asyncio.sleep(delay=1)
@@ -269,26 +255,25 @@ async def thread_task(
 
 
 async def thread_auth(
-        session: aiohttp.ClientSession,
         args: dict,
         updater: StatusUpdater,
-        call_api: Callable[[CallAPIArgs], Awaitable[dict | str]],
-        get_state: Callable[[str], Any],
-        set_state: Callable[[str, Any], dict],
+        caller: APICaller,
+        state: State,
 ):
     """更新游戏状态, 包括token, YesCoinProfileData
     """
     tele_proxy = args['$tg_session']['proxy_ip']
     tma_url = args['tma_url']
-    telegram_plugin: TelegramClientPlugin = args['plg_telegram_client']
+    telegram_plugin = PluginTelegram.of_args(args, updater)
+    net_plugin = PluginNetwork.of_args(args, updater)
 
     from time import time
 
     async def _login(tg_web_data: str, ) -> str:
         try:
             assert tg_web_data is not None, 'tg_web_data为None,获取tg数据失败'
-            response = await session.post(url='https://bi.yescoin.gold/user/login',
-                                          json={"code": tg_web_data})
+            response = await caller.post(url='https://bi.yescoin.gold/user/login',
+                                         json={"code": tg_web_data})
             response.raise_for_status()
             response_json = await response.json()
             token = response_json['data']['token']
@@ -299,7 +284,7 @@ async def thread_auth(
 
     async def _get_account_info() -> dict:
         try:
-            response = await session.get(url='https://bi.yescoin.gold/account/getAccountInfo')
+            response = await caller.get(url='https://bi.yescoin.gold/account/getAccountInfo')
             response.raise_for_status()
             response_json = await response.json()
             profile_data = response_json['data']
@@ -312,18 +297,19 @@ async def thread_auth(
     while True:
         if time() - access_token_created_time >= 3600:  # 每小时更新
             try:
-                ip = await NetworkPlugin.check_proxy_ip(proxies=[tele_proxy])  # 检测proxy是否可用
+                ip = await net_plugin.check_proxy_ip(proxies=[tele_proxy])  # 检测proxy是否可用
                 updater.info(f"on loop # Tele IP[ {ip} ]")
                 # tg.login ===
                 tma_token = await telegram_plugin.get_tma_token(tma_url)
                 access_token = await _login(tg_web_data=tma_token)
-                session.headers["Token"] = access_token
+                updater.debug('获得token#', extra={'token': access_token})
+                caller.session.headers["Token"] = access_token
                 access_token_created_time = time()
-                set_state('access_token', access_token)
+                state.set('access_token', access_token)
 
                 # yescoin.profile ===
                 profile_data = await _get_account_info()
-                set_state('profile_data', profile_data)
+                state.set('profile_data', profile_data)
             except FatalExecutorException as e:
                 raise e
             except ExecutorException as e:  # 普通错误(断网等), 尝试sleep后重试
@@ -338,14 +324,12 @@ async def thread_auth(
 
 
 async def thread_offline(
-        session: aiohttp.ClientSession,
         args: dict,
         updater: StatusUpdater,
-        call_api: Callable[[CallAPIArgs], Awaitable[dict | str]],
-        get_state: Callable[[str], Any],
-        set_state: Callable[[str, Any], dict],
+        caller: APICaller,
+        state: State,
 ):
-    useragent = args['$tg_session']['useragent']
+    useragent = args['$tg_session']['agent_info']['useragent']
 
     async def _offline(token: str, ) -> str | None:
         """活跃时每8s发送一次;否则1分钟一次"""
@@ -364,8 +348,8 @@ async def thread_offline(
             "user-agent": useragent
         }
         try:
-            async with session.request(method='POST', headers=_yes_coin_offline_header,
-                                       url='https://bi.yescoin.gold/user/offline', ) as response:
+            async with caller.post(url='https://bi.yescoin.gold/user/offline',
+                                   headers=_yes_coin_offline_header, ) as response:
                 response.raise_for_status()
                 response_json = await response.json()
                 updater.info(f"on loop #{response_json}")
@@ -376,10 +360,13 @@ async def thread_offline(
             return None
 
     while True:
-        if (tk := get_state('token')) is not None:
+        if (tk := state.get('token')) is not None:
             await _offline(token=tk)
         await asyncio.sleep(8)  #
     pass
 
+
 if __name__ == '__main__':
-    """测试脚本"""
+    """可以在这里编写函数测试用例
+    但是插件(Plugin)必须在App中运行才会加载
+    """

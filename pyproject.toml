@@ -6,4 +6,5 @@ readme = "README.md"
 dependencies = [
     'pydantic',
     'loguru',
+    'aiohttp',
 ]
