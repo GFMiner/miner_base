@@ -18,14 +18,18 @@ class GFMPlugin(ABC):
 
     @classmethod
     @abstractmethod
-    def of_args(cls, args: dict, updater: StatusUpdater) -> tuple[str, 'GFMPlugin']:
+    def of_args(cls, args: dict, updater: StatusUpdater):
         """通过脚本args参数构造实例
         :returns (<plugin_id>, <instance> )
         """
+
+    @classmethod
+    async def register_plugin(cls, args: dict, updater: StatusUpdater) -> dict[str, 'GFMPlugin']:
         _pid = cls.plugin_id if isinstance(cls.plugin_id, str) else cls.plugin_id()
         plugin = args[_pid]
         assert plugin is not None, f'从args读取插件[{_pid}]失败'
-        return plugin
+        plg: GFMPlugin = cls.of_args(args, updater)
+        return {_pid: plg}
 
 
 class PluginTelegram(GFMPlugin, ABC):
