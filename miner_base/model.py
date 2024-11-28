@@ -4,7 +4,7 @@ from abc import abstractmethod
 from typing import TypedDict, Optional, Any, Union, Mapping, Callable, Awaitable, Iterable, Unpack
 
 from aiohttp import ClientResponse, BasicAuth, Fingerprint, ClientTimeout
-from aiohttp.client import SSLContext
+from aiohttp.client import SSLContext, ClientSession
 from aiohttp.typedefs import LooseHeaders, StrOrURL, LooseCookies, Query
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -82,18 +82,8 @@ class APICaller(ABC):
         pass
 
     @property
-    def headers(self) -> dict:
-        """与 aiohttp.ClientSession.headers() 方法一致 设置或读取headers"""
-        raise NotImplementedError()
-
     @abstractmethod
-    def request(
-            self,
-            method: str,
-            url: StrOrURL,
-            **kwargs: Unpack[RequestOptions],
-    ) -> "_RequestContextManager":
-        """与 aiohttp.ClientSession.request() 方法一致, 但是自带全局 aiohttp.ClientSession"""
+    def session(self) -> ClientSession:
         ...
 
     @abstractmethod
@@ -224,23 +214,12 @@ class ThreadDefine(FunctionDefine, BaseModel):
     is_async: bool = True  # thread 固定为True
 
 
-class Script(BaseModel):
-    """直接存储在session_state中,便于读写
-    代表一个脚本对象, 在Interactor中实现业务逻辑
+class Script:
+    """代表脚本对象
     """
-    apis: list[ApiDefine] = Field([])
-    funcs: list[FunctionDefine] = Field([])
-    threads: list[ThreadDefine] = Field([])
-    state: dict = Field({})
-
-    def api_by_name(self, name: str) -> ApiDefine | None:
-        return next((x for x in self.apis if x.name == name), None)
-
-    def func_by_name(self, name: str) -> FunctionDefine | None:
-        return next((x for x in self.funcs if x.name == name), None)
-
-    def thread_by_name(self, name: str) -> ThreadDefine | None:
-        return next((x for x in self.threads if x.name == name), None)
+    apis: list[ApiDefine]
+    funcs: list[FunctionDefine]
+    threads: list[ThreadDefine]
 
 
 # 标识 to_args()阶段,对param->args 的处理方法
