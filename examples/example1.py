@@ -44,9 +44,10 @@ if __name__ == '__main__':
         from loguru import logger
         from miner_base.impl import LoggerStatusUpdater
         await thread_task(
-            args={'ADD_NUM': 4,
-                  },
-            updater=LoggerStatusUpdater(logger=logger), state=State({}), caller=None,
+            args={
+                'ADD_NUM': 4,
+            },
+            updater=LoggerStatusUpdater(logger=logger), state=State({}), caller=APICaller(),
             # state=State({}),
             # caller=APICaller(),
         )

@@ -2,8 +2,21 @@
 
 ## 创建GFMiner脚本
 
-### 条件
-python > 3.11
+### 0.环境&基础
+
+> python > 3.11
+
+- 掌握基本语法: 控制流程(if,while,for),函数定义(def),类定义(class)
+- 掌握基本asyncio用法: async def, await
+
+> aiohttp > 3.10
+
+- 能够使用aiohttp发起网络请求(get, post)
+- 能够修改请求头(headers), 请求参数(params), 请求体(data)
+
+> pydantic > 2.9
+
+- 会使用 BaseModel, Field(default=默认参数, title='描述')
 
 ### 1.安装依赖
 
@@ -48,3 +61,6 @@ async def thread_task(args: dict, updater: StatusUpdater, state: State, caller: 
 ```
 
 ### 3.将脚本导入到APP
+
+在`脚本工具`中调试脚本
+

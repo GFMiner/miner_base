@@ -1,14 +1,41 @@
 """
 Yescoin脚本示例
+
+- [v] 脚本配置参数定义
+- [ ] API函数定义
+- [v] Thread函数定义
+- [v] Thread内嵌网络请求
 """
 import asyncio
-from random import randint
+from random import randint, choice
 
 from miner_base import *
 
 
-async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, state: State, ):
-    """ 任务线程
+class Profile(ScriptProfile):
+    """0.脚本配置参数定义: 用户将在GUI配置/修改下面的参数值
+    继承 `ScriptProfile` 类
+    使用 Field 函数,定义参数默认值与说明信息
+    请勿使用 Field.default_factory, 这将导致用户无法配置默认值
+    """
+    TMA_URL: list[str] = Field(['t.me/theYescoin_bot/Yescoin?startapp=1BjQUx'],
+                               title='tg小程序URL, 使用list[str]用于选择随机邀请码')
+    MIN_AVAILABLE_ENERGY: int = Field(120, title='最小可用能量')
+    SLEEP_BY_MIN_ENERGY: int = Field(200, title='达到最小能量后等待(s)')
+    AUTO_UPGRADE_TAP: bool = Field(True, title='自动升级tap')
+    MAX_TAP_LEVEL: int = Field(10, title='最大tap等级')
+    AUTO_UPGRADE_ENERGY: bool = Field(True, title='自动升级能量')
+    MAX_ENERGY_LEVEL: int = Field(10, title='最大能量等级')
+    AUTO_UPGRADE_CHARGE: bool = Field(True, title='自动升级充电')
+    MAX_CHARGE_LEVEL: int = Field(10, title='最大充电等级')
+    APPLY_DAILY_ENERGY: bool = Field(True, title='每日能量')
+    APPLY_DAILY_TURBO: bool = Field(True, title='每日加速')
+    RANDOM_TAPS_COUNT: tuple[int, int] = Field((30, 180), title='随机点击次数')
+    SLEEP_BETWEEN_TAP: tuple[int, int] = Field((20, 35), title='随机点击间隔(s)')
+
+
+async def thread_task(args: ScriptParam[Profile], updater: StatusUpdater, caller: APICaller, state: State, ):
+    """1.任务线程定义:
     :param args: 传入的参数
     :param updater: 用于更新状态(相当于logger)
     :param caller: 发起网络请求/调用API函数
@@ -16,9 +43,10 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
     :return: 不需要返回值
     脚本在App中将以 协程方式并发调用
     """
-    settings = args
+    profile: Profile = args.profile
 
     # ===
+    # noinspection PyShadowingNames
     async def _get_account_info() -> dict:
         try:
             response = await caller.get(url='https://bi.yescoin.gold/account/getAccountInfo')
@@ -30,6 +58,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             updater.error(f"未知错误 _get_account_info: {e}", error=e)
             raise e  # 重新抛出,交给loop处理
 
+    # noinspection PyShadowingNames
     async def _get_game_info():
         try:
             response = await caller.get(url='https://bi.yescoin.gold/game/getGameInfo')
@@ -41,6 +70,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             updater.error(f"未知错误 _get_game_info: {e}", error=e)
             raise e  # 重新抛出,交给loop处理
 
+    # noinspection PyShadowingNames
     async def _get_special_box_info():
         try:
             response = await caller.get(url='https://bi.yescoin.gold/game/getSpecialBoxInfo')
@@ -52,6 +82,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             updater.error(f"未知错误 _get_special_box_info: {e}", error=e)
             raise e  # 重新抛出,交给loop处理
 
+    # noinspection PyShadowingNames
     async def _send_taps_with_turbo() -> bool:
         try:
             special_box_info = await _get_special_box_info()
@@ -70,6 +101,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             updater.error(f"未知错误 when Tapping: {e}", error=e)
             raise e  # 重新抛出,交给loop处理
 
+    # noinspection PyShadowingNames
     async def _send_taps(taps: int, ) -> bool:
         try:
             response = await caller.post(url='https://bi.yescoin.gold/game/collectCoin', json=taps)
@@ -83,6 +115,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             updater.error(f"未知错误 _send_taps: {e}", error=e)
             raise e  # 重新抛出,交给loop处理
 
+    # noinspection PyShadowingNames
     async def _get_boosts_info():
         try:
             response = await caller.get(url='https://bi.yescoin.gold/build/getAccountBuildInfo')
@@ -94,6 +127,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             updater.error(f"未知错误 _get_boosts_info: {e}", error=e)
             raise e  # 重新抛出,交给loop处理
 
+    # noinspection PyShadowingNames
     async def _apply_energy_boost():
         try:
             response = await caller.post(url='https://bi.yescoin.gold/game/recoverCoinPool')
@@ -105,6 +139,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             await asyncio.sleep(delay=3)
             return False
 
+    # noinspection PyShadowingNames
     async def _apply_turbo_boost():
         try:
             response = await caller.post(url='https://bi.yescoin.gold/game/recoverSpecialBox')
@@ -116,6 +151,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             await asyncio.sleep(delay=3)
             return False
 
+    # noinspection PyShadowingNames
     async def _level_up(boost_id: int, ) -> bool:
         try:
             response = await caller.post(url='https://bi.yescoin.gold/build/levelUp', json=boost_id)
@@ -137,7 +173,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
         balance = state.get('profile_data')['currentAmount']
         try:
             # 刷新状态
-            taps = randint(*settings['RANDOM_TAPS_COUNT'])
+            taps = randint(*profile.RANDOM_TAPS_COUNT)
             game_data = await _get_game_info()
             # game_data = await call_api(RequestOptions(api_name='get_game_info'))
             available_energy = game_data['coinPoolLeftCount']
@@ -173,8 +209,8 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
 
             if active_turbo is False:
                 if (energy_boost_count > 0
-                        and available_energy < settings['MIN_AVAILABLE_ENERGY']
-                        and settings['APPLY_DAILY_ENERGY'] is True):
+                        and available_energy < profile.MIN_AVAILABLE_ENERGY
+                        and profile.APPLY_DAILY_ENERGY is True):
                     updater.info(f"等待 5s 激活每日 能量升级")
                     await asyncio.sleep(delay=5)
 
@@ -185,7 +221,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
                         await asyncio.sleep(delay=1)
                     continue
 
-                if turbo_boost_count > 0 and settings['APPLY_DAILY_TURBO'] is True:
+                if turbo_boost_count > 0 and profile.APPLY_DAILY_TURBO is True:
                     updater.info(f"等待 5s 激活每日 turbo boost")
                     await asyncio.sleep(delay=5)
 
@@ -197,9 +233,9 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
                         # turbo_time = time()
                     continue
 
-                if (settings['AUTO_UPGRADE_TAP'] is True
+                if (profile.AUTO_UPGRADE_TAP is True
                         and balance > next_tap_price
-                        and next_tap_level <= settings['MAX_TAP_LEVEL']):
+                        and next_tap_level <= profile.MAX_TAP_LEVEL):
                     updater.info(f"等待 5s: 准备 点击升级到 lv[ {next_tap_level} ]")
                     await asyncio.sleep(delay=5)
 
@@ -208,9 +244,9 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
                         await asyncio.sleep(delay=1)
                     continue
 
-                if (settings['AUTO_UPGRADE_ENERGY'] is True
+                if (profile.AUTO_UPGRADE_ENERGY is True
                         and balance > next_energy_price
-                        and next_energy_level <= settings['MAX_ENERGY_LEVEL']):
+                        and next_energy_level <= profile.MAX_ENERGY_LEVEL):
                     updater.info(f"等待 5s:准备 能量升级到 lv[ {next_energy_level} ]")
                     await asyncio.sleep(delay=5)
 
@@ -220,9 +256,9 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
                         await asyncio.sleep(delay=1)
                     continue
 
-                if (settings['AUTO_UPGRADE_CHARGE'] is True
+                if (profile.AUTO_UPGRADE_CHARGE is True
                         and balance > next_charge_price
-                        and next_charge_level <= settings['MAX_CHARGE_LEVEL']):
+                        and next_charge_level <= profile.MAX_CHARGE_LEVEL):
                     updater.info(f"等待 5s:准备 升级到 lv[ {next_charge_level} ]")
                     await asyncio.sleep(delay=5)
 
@@ -232,9 +268,9 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
                         await asyncio.sleep(delay=1)
                     continue
 
-                if available_energy < settings['MIN_AVAILABLE_ENERGY']:
-                    updater.info(f"达到最低能量: {available_energy}: 等待 {settings['SLEEP_BY_MIN_ENERGY']}s")
-                    await asyncio.sleep(delay=settings['SLEEP_BY_MIN_ENERGY'])
+                if available_energy < profile.MIN_AVAILABLE_ENERGY:
+                    updater.info(f"达到最低能量: {available_energy}: 等待 {profile.SLEEP_BY_MIN_ENERGY}s")
+                    await asyncio.sleep(delay=profile.SLEEP_BY_MIN_ENERGY)
                     continue
 
         except SessionException as e:
@@ -244,7 +280,7 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
             await asyncio.sleep(delay=3)
 
         else:
-            sleep_between_clicks = randint(a=settings['SLEEP_BETWEEN_TAP'][0], b=settings['SLEEP_BETWEEN_TAP'][1])
+            sleep_between_clicks = randint(*profile.SLEEP_BETWEEN_TAP)
 
             if active_turbo is True:
                 active_turbo = False
@@ -255,20 +291,21 @@ async def thread_task(args: dict, updater: StatusUpdater, caller: APICaller, sta
 
 
 async def thread_auth(
-        args: dict,
+        args: ScriptParam[Profile],
         updater: StatusUpdater,
         caller: APICaller,
         state: State,
 ):
     """更新游戏状态, 包括token, YesCoinProfileData
     """
-    tele_proxy = args['$tg_session']['proxy_ip']
-    tma_url = args['tma_url']
+    tele_proxy = args.tg_session['proxy_ip']
+    tma_url = choice(args.profile.TMA_URL)  # 随机选一个
     telegram_plugin = PluginTelegram.of_args(args, updater)
     net_plugin = PluginNetwork.of_args(args, updater)
 
     from time import time
 
+    # noinspection PyShadowingNames
     async def _login(tg_web_data: str, ) -> str:
         try:
             assert tg_web_data is not None, 'tg_web_data为None,获取tg数据失败'
@@ -282,6 +319,7 @@ async def thread_auth(
             updater.error(f"未知错误 _login: {e}", error=e, extra={'args': f'tg_web_data#{tg_web_data}'})
             raise e  # 重新抛出,交给loop处理
 
+    # noinspection PyShadowingNames
     async def _get_account_info() -> dict:
         try:
             response = await caller.get(url='https://bi.yescoin.gold/account/getAccountInfo')
@@ -324,12 +362,12 @@ async def thread_auth(
 
 
 async def thread_offline(
-        args: dict,
+        args: ScriptParam[Profile],
         updater: StatusUpdater,
         caller: APICaller,
         state: State,
 ):
-    useragent = args['$tg_session']['agent_info']['useragent']
+    useragent = args.tg_session['agent_info']['useragent']
 
     async def _offline(token: str, ) -> str | None:
         """活跃时每8s发送一次;否则1分钟一次"""
@@ -367,6 +405,7 @@ async def thread_offline(
 
 
 if __name__ == '__main__':
-    """可以在这里编写函数测试用例
-    但是插件(Plugin)必须在App中运行才会加载
+    """
+    可以在这里编写简单函数测试用例
+    完整测试使用App运行, 插件(Plugin)只有在App中运行才会加载
     """

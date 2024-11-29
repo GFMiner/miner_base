@@ -4,38 +4,24 @@ Plugin是Miner的依赖项
 """
 from abc import ABC, abstractmethod
 
-from miner_base.model import StatusUpdater
+from miner_base.model import StatusUpdater, ScriptParam
 
 
 class GFMPlugin(ABC):
-    @classmethod
-    @abstractmethod
-    def plugin_id(cls) -> str:
-        """指定该插件的id(名称)
-        对应args中 完整的key为 <plugin_id>.<key>
-        """
-        pass
 
     @classmethod
     @abstractmethod
-    def of_args(cls, args: dict, updater: StatusUpdater):
+    def of_args(cls, args: ScriptParam, updater: StatusUpdater):
         """通过脚本args参数构造实例
+        1种Class只能注册1个实例
         :returns plugin
         """
-        _pid = cls.plugin_id if isinstance(cls.plugin_id, str) else cls.plugin_id()
-        plugin = args[_pid]
-        assert plugin is not None, f'从args读取插件[{_pid}]失败'
-        return plugin
-
-    @classmethod
-    async def register_plugin(cls, args: dict, updater: StatusUpdater) -> dict[str, 'GFMPlugin']:
-        _pid = cls.plugin_id if isinstance(cls.plugin_id, str) else cls.plugin_id()
-        plg: GFMPlugin = cls.of_args(args, updater)
-        return {_pid: plg}
+        plugin = [p for p in args.plugins if isinstance(p, cls)]
+        assert len(plugin) != 0, f'从args读取插件[{cls}]失败'
+        return plugin[0]
 
 
 class PluginTelegram(GFMPlugin, ABC):
-    plugin_id = 'plg_telegram'
 
     async def get_tma_token(self, tma_url: str) -> str:
         """ 获取tg对特定小程序的accessToken
@@ -46,4 +32,4 @@ class PluginTelegram(GFMPlugin, ABC):
 
 
 class PluginNetwork(GFMPlugin, ABC):
-    plugin_id = 'plg_network'
+    ...

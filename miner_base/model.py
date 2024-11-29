@@ -1,20 +1,41 @@
 import json
 import re
 from abc import abstractmethod
-from typing import TypedDict, Optional, Any, Union, Mapping, Callable, Awaitable, Iterable, Unpack
+from typing import TypedDict, Optional, Any, Union, Mapping, Callable, Awaitable, Iterable, Unpack, Generic
 
 from aiohttp import ClientResponse, BasicAuth, Fingerprint, ClientTimeout
+# noinspection PyProtectedMember
 from aiohttp.client import SSLContext, ClientSession
 from aiohttp.typedefs import LooseHeaders, StrOrURL, LooseCookies, Query
 from loguru import logger
 from pydantic import BaseModel, Field
 from pydantic.dataclasses import dataclass
+from typing_extensions import TypeVar
 
+from miner_base import GFMPlugin
 from miner_base.exception import *
 
 LOG_LEVEL = Literal['TRACE', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL']
 
 TSK_STATUS = Literal['initialized', 'queued', 'running', 'completed', 'canceled', 'failed']
+
+
+class AgentInfo(TypedDict):
+    """用户信息字段"""
+    useragent: str
+    percent: int
+    type: str
+    system: str
+    browser: str
+    version: str
+    os: str
+
+
+class TgSessionParam(TypedDict):
+    id: str
+    session_name: str
+    proxy_ip: str
+    agent_info: AgentInfo
 
 
 @dataclass
@@ -214,14 +235,6 @@ class ThreadDefine(FunctionDefine, BaseModel):
     is_async: bool = True  # thread 固定为True
 
 
-class Script:
-    """代表脚本对象
-    """
-    apis: list[ApiDefine]
-    funcs: list[FunctionDefine]
-    threads: list[ThreadDefine]
-
-
 # 标识 to_args()阶段,对param->args 的处理方法
 ScriptParamTag = Literal[
     '',  # 默认处理方法,使用json.loads将json_str转换成value值
@@ -231,7 +244,7 @@ ScriptParamTag = Literal[
 ]
 
 
-class ScriptParamField(TypedDict):
+class ScriptParamField(TypedDict):  # fixme depre:
     """项目参数字段, 用于设置交互器参数;
     参见: GfProjectModel.to_args()
     属性:
@@ -299,12 +312,21 @@ def ScriptParamField_of_choice_list_str(nm: str, desc: str, dft: list[str], op=F
 TeleMobaiPlat = Literal['android', 'ios']
 
 
-def base_tg_proj_fields_params(
-        proj_dft_url='t.me/theYescoin_bot/Yescoin?startapp=1BjQUx',
-) -> list[ScriptParamField]:
-    """所有tg项目都必填的参数"""
-    return [ScriptParamField_of_str('tma_url', 'tg小程序URL, 包含邀请码', proj_dft_url, op=False),
-            ]
+class ScriptProfile(BaseModel, ABC):
+    """脚本配置参数定义: 用户将在GUI配置/修改下面的参数值
+    脚本内继承本类,实现参数定义
+    请勿使用 Field.default_factory, 这将导致用户无法配置默认值
+    """
+    pass
+
+
+P = TypeVar('P', bound=ScriptProfile)
+
+
+class ScriptParam(BaseModel, Generic[P]):
+    tg_session: TgSessionParam = Field({}, title='创建task时传入')
+    profile: P = Field({}, title='用户在脚本中定义的Profile,创建task时传入')
+    plugins: list[GFMPlugin] = Field([], exclude=True, title='运行时加载的插件')
 
 
 class TmaParam(TypedDict):
@@ -327,6 +349,7 @@ def TmaParam_of(url: str) -> TmaParam | None:
             ref_param=groups["ref_param"],
         )
     return None
+
 
 
 class TeleProxyJSON(TypedDict):
