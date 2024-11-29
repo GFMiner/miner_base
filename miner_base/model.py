@@ -8,11 +8,10 @@ from aiohttp import ClientResponse, BasicAuth, Fingerprint, ClientTimeout
 from aiohttp.client import SSLContext, ClientSession
 from aiohttp.typedefs import LooseHeaders, StrOrURL, LooseCookies, Query
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PrivateAttr
 from pydantic.dataclasses import dataclass
 from typing_extensions import TypeVar
 
-from miner_base import GFMPlugin
 from miner_base.exception import *
 
 LOG_LEVEL = Literal['TRACE', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL']
@@ -312,6 +311,20 @@ def ScriptParamField_of_choice_list_str(nm: str, desc: str, dft: list[str], op=F
 TeleMobaiPlat = Literal['android', 'ios']
 
 
+class GFMPlugin(ABC):
+
+    @classmethod
+    @abstractmethod
+    def of_args(cls, args: 'ScriptParam', updater: StatusUpdater):
+        """通过脚本args参数构造实例
+        1种Class只能注册1个实例
+        :returns plugin
+        """
+        plugin = [p for p in args.plugins() if isinstance(p, cls)]
+        assert len(plugin) != 0, f'从args读取插件[{cls}]失败'
+        return plugin[0]
+
+
 class ScriptProfile(BaseModel, ABC):
     """脚本配置参数定义: 用户将在GUI配置/修改下面的参数值
     脚本内继承本类,实现参数定义
@@ -325,8 +338,11 @@ P = TypeVar('P', bound=ScriptProfile)
 
 class ScriptParam(BaseModel, Generic[P]):
     tg_session: TgSessionParam = Field({}, title='创建task时传入')
-    profile: P = Field({}, title='用户在脚本中定义的Profile,创建task时传入')
-    plugins: list[GFMPlugin] = Field([], exclude=True, title='运行时加载的插件')
+    profile: P = Field(None, title='用户在脚本中定义的Profile,创建task时传入')
+    _plugins: list[GFMPlugin] = PrivateAttr([])
+
+    def plugins(self) -> list[GFMPlugin]:
+        return self._plugins
 
 
 class TmaParam(TypedDict):
@@ -349,7 +365,6 @@ def TmaParam_of(url: str) -> TmaParam | None:
             ref_param=groups["ref_param"],
         )
     return None
-
 
 
 class TeleProxyJSON(TypedDict):
