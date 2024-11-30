@@ -14,12 +14,13 @@ from miner_base import *
 
 class Profile(ScriptProfile):
     """0.脚本配置参数定义: 用户将在GUI配置/修改下面的参数值
-    继承 `ScriptProfile` 类
+    必须 继承 `ScriptProfile` 类
     使用 Field 函数,定义参数默认值与说明信息
-    请勿使用 Field.default_factory, 这将导致用户无法配置默认值
+    请勿 使用 Field.default_factory, 这将导致用户无法配置默认值
+    请勿 使用 非原始类型、非Field函数(例如PrivateAttr)
     """
     TMA_URL: list[str] = Field(['t.me/theYescoin_bot/Yescoin?startapp=1BjQUx'],
-                               title='tg小程序URL, 使用list[str]用于选择随机邀请码')
+                               title='tg小程序URL', description='使用list[str]用于选择随机邀请码')
     MIN_AVAILABLE_ENERGY: int = Field(120, title='最小可用能量')
     SLEEP_BY_MIN_ENERGY: int = Field(200, title='达到最小能量后等待(s)')
     AUTO_UPGRADE_TAP: bool = Field(True, title='自动升级tap')
