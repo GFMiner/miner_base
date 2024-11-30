@@ -24,12 +24,12 @@ class AgentInfo(TypedDict):
     type: str
     system: str
     browser: str
-    version: str
+    version: int | str
     os: str
 
 
 class TgSessionParam(TypedDict):
-    id: str
+    id: str | int
     session_name: str
     proxy_ip: str
     agent_info: AgentInfo
