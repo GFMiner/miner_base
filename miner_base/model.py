@@ -28,7 +28,7 @@ class AgentInfo(TypedDict):
     os: str
 
 
-class TgSessionParam(TypedDict):
+class TgSessionArgs(TypedDict):
     id: str | int
     session_name: str
     proxy_ip: str
@@ -215,8 +215,8 @@ P = TypeVar('P', bound=ScriptProfile)
 
 class ScriptParam(BaseModel, Generic[P]):
     """在创建task时构建"""
-    tg_session: TgSessionParam = Field({}, title='tg帐户session信息')
-    profile: P | dict = Field({}, title='用户在脚本中定义的Profile')
+    tg_session: TgSessionArgs = Field(title='tg帐户session信息')
+    profile: P = Field(title='用户在脚本中定义的Profile')
     _plugins: list[GFMPlugin] = PrivateAttr([])
 
     def plugins(self) -> list[GFMPlugin]:
