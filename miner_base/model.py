@@ -227,8 +227,9 @@ class ScriptRuntimeArgs(BaseModel, Generic[P]):
            tg_session: TgSessionArgs,
            profile: P,
            plugins_factory: Callable[['ScriptRuntimeArgs'], list[GFMPlugin]]):
-        args = ScriptRuntimeArgs(tg_session=tg_session, profile=profile)
+        args = cls(tg_session=tg_session, profile=profile)
         args._plugins = plugins_factory(args)
+        return args
 
 
 class TmaParam(TypedDict):
