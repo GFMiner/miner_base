@@ -192,7 +192,7 @@ class GFMPlugin(ABC):
 
     @classmethod
     @abstractmethod
-    def of_args(cls, args: 'ScriptParam', updater: StatusUpdater):
+    def of_args(cls, args: 'ScriptRuntimeArgs', updater: StatusUpdater):
         """通过脚本args参数构造实例
         1种Class只能注册1个实例
         :returns plugin
@@ -213,14 +213,22 @@ class ScriptProfile(BaseModel, ABC):
 P = TypeVar('P', bound=ScriptProfile)
 
 
-class ScriptParam(BaseModel, Generic[P]):
-    """在创建task时构建"""
+class ScriptRuntimeArgs(BaseModel, Generic[P]):
+    """运行task时,通过ScriptArgs构建, thread_funcion的主要参数"""
     tg_session: TgSessionArgs = Field(title='tg帐户session信息')
-    profile: P = Field(title='用户在脚本中定义的Profile')
+    profile: P = Field(title='用户在脚本中定义的Profile, 运行时产生')
     _plugins: list[GFMPlugin] = PrivateAttr([])
 
     def plugins(self) -> list[GFMPlugin]:
         return self._plugins
+
+    @classmethod
+    def of(cls,
+           tg_session: TgSessionArgs,
+           profile: P,
+           plugins_factory: Callable[['ScriptRuntimeArgs'], list[GFMPlugin]]):
+        args = ScriptRuntimeArgs(tg_session=tg_session, profile=profile)
+        args._plugins = plugins_factory(args)
 
 
 class TmaParam(TypedDict):

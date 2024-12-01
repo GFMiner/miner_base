@@ -1,5 +1,5 @@
 from examples.ex_tg_yescoin import Profile
-from miner_base import ScriptParam
+from miner_base import ScriptRuntimeArgs
 
 
 def test_model_validate():
@@ -15,6 +15,6 @@ def test_model_validate():
         },
         "profiles": {}}
 
-    params = ScriptParam[Profile].model_validate(raw)
+    params = ScriptRuntimeArgs[Profile].model_validate(raw)
 
     print(params)

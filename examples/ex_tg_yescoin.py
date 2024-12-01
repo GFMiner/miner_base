@@ -36,7 +36,7 @@ class Profile(ScriptProfile):
     SLEEP_BETWEEN_TAP: tuple[int, int] = Field((20, 35), title='随机点击间隔(s)')
 
 
-async def thread_task(args: ScriptParam[Profile], updater: StatusUpdater, caller: APICaller, state: State, ):
+async def thread_task(args: ScriptRuntimeArgs[Profile], updater: StatusUpdater, caller: APICaller, state: State, ):
     """1.任务线程定义:
     :param args: 传入的参数
     :param updater: 用于更新状态(相当于logger)
@@ -292,13 +292,9 @@ async def thread_task(args: ScriptParam[Profile], updater: StatusUpdater, caller
     pass
 
 
-async def thread_auth(
-        args: ScriptParam[Profile],
-        updater: StatusUpdater,
-        caller: APICaller,
-        state: State,
-):
-    """更新游戏状态, 包括token, YesCoinProfileData
+async def thread_auth(args: ScriptRuntimeArgs[Profile], updater: StatusUpdater, caller: APICaller, state: State, ):
+    """更新游戏状态: 每1小时刷新用户auth信息
+     包括token
     """
     tele_proxy = args.tg_session['proxy_ip']
     tma_url = choice(args.profile.TMA_URL)  # 随机选一个
@@ -363,12 +359,7 @@ async def thread_auth(
     pass
 
 
-async def thread_offline(
-        args: ScriptParam[Profile],
-        updater: StatusUpdater,
-        caller: APICaller,
-        state: State,
-):
+async def thread_offline(args: ScriptRuntimeArgs[Profile], updater: StatusUpdater, caller: APICaller, state: State, ):
     useragent = args.tg_session['agent_info']['useragent']
 
     async def _offline(token: str, ) -> str | None:
