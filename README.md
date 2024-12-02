@@ -4,17 +4,17 @@
 
 ### 0.环境&基础
 
-> python > 3.11
+> python > 3.11 (建议使用 3.12)
 
 - 掌握基本语法: 控制流程(if,while,for),函数定义(def),类定义(class)
 - 掌握基本asyncio用法: async def, await
 
-> aiohttp > 3.10
+> aiohttp > 3.10 (建议使用 3.10.10)
 
 - 能够使用aiohttp发起网络请求(get, post)
 - 能够修改请求头(headers), 请求参数(params), 请求体(data)
 
-> pydantic > 2.9
+> pydantic > 2.9 (建议使用 3.9.2)
 
 - 会使用 BaseModel, Field(default=默认参数, title='描述')
 

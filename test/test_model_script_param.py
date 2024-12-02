@@ -1,4 +1,4 @@
-from examples.ex_tg_yescoin import Profile
+from examples.example4_tg_yescoin import Profile
 from miner_base import ScriptRuntimeArgs
 
 
