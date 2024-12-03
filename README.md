@@ -63,4 +63,5 @@ async def thread_task(args: dict, updater: StatusUpdater, state: State, caller: 
 ### 3.将脚本导入到APP
 
 在`脚本工具`中调试脚本
+<iframe width="560" height="315" src="https://www.youtube.com/embed/STwiVPqkfxI?si=bI4d803RBIawt1Y2" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
