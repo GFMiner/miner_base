@@ -38,7 +38,7 @@ class TgSessionArgs(TypedDict):
 @dataclass
 class State:
     """脚本状态管理器"""
-    data: dict = Field({})
+    data: dict = Field(dict)
 
     def get(self, key: str, default=None):
         return self.data.get(key, default)
@@ -221,10 +221,10 @@ P = TypeVar('P', bound=ScriptProfile)
 
 
 class ScriptRuntimeArgs(BaseModel, Generic[P]):
-    """运行task时,通过ScriptArgs构建, thread_funcion的主要参数"""
+    """运行task时,通过ScriptArgs构建, thread_function的主要参数"""
     tg_session: TgSessionArgs = Field(title='tg帐户session信息')
     profile: P = Field(title='用户在脚本中定义的Profile, 运行时产生')
-    _plugins: list[GFMPlugin] = PrivateAttr([])
+    _plugins: list[GFMPlugin] = PrivateAttr(list)
 
     def plugins(self) -> list[GFMPlugin]:
         return self._plugins

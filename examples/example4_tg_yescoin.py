@@ -20,7 +20,7 @@ class Profile(ScriptProfile):
     请勿 使用 非原始类型、非Field函数(例如PrivateAttr)
     <在这里的注释信息将展示在GUI中>
     """
-    TMA_URL: list[str] = Field(['t.me/theYescoin_bot/Yescoin?startapp=1BjQUx'],
+    TMA_URL: list[str] = Field(lambda: ['t.me/theYescoin_bot/Yescoin?startapp=1BjQUx'],
                                title='tg小程序URL', description='使用list[str]用于选择随机邀请码')
     MIN_AVAILABLE_ENERGY: int = Field(120, title='最小可用能量')
     SLEEP_BY_MIN_ENERGY: int = Field(200, title='达到最小能量后等待(s)')
