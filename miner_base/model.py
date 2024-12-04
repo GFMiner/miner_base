@@ -104,6 +104,7 @@ class APICaller(ABC):
     def session(self) -> ClientSession:
         ...
 
+    # noinspection PyUnresolvedReferences
     @abstractmethod
     def get(
             self,
@@ -111,6 +112,7 @@ class APICaller(ABC):
             **kwargs: Unpack[RequestOptions],
     ) -> "_RequestContextManager": ...
 
+    # noinspection PyUnresolvedReferences
     @abstractmethod
     def options(
             self,
@@ -118,6 +120,7 @@ class APICaller(ABC):
             **kwargs: Unpack[RequestOptions],
     ) -> "_RequestContextManager": ...
 
+    # noinspection PyUnresolvedReferences
     @abstractmethod
     def head(
             self,
@@ -125,6 +128,7 @@ class APICaller(ABC):
             **kwargs: Unpack[RequestOptions],
     ) -> "_RequestContextManager": ...
 
+    # noinspection PyUnresolvedReferences
     @abstractmethod
     def post(
             self,
@@ -132,6 +136,7 @@ class APICaller(ABC):
             **kwargs: Unpack[RequestOptions],
     ) -> "_RequestContextManager": ...
 
+    # noinspection PyUnresolvedReferences
     @abstractmethod
     def put(
             self,
@@ -139,6 +144,7 @@ class APICaller(ABC):
             **kwargs: Unpack[RequestOptions],
     ) -> "_RequestContextManager": ...
 
+    # noinspection PyUnresolvedReferences
     @abstractmethod
     def patch(
             self,
@@ -146,6 +152,7 @@ class APICaller(ABC):
             **kwargs: Unpack[RequestOptions],
     ) -> "_RequestContextManager": ...
 
+    # noinspection PyUnresolvedReferences
     @abstractmethod
     def delete(
             self,
