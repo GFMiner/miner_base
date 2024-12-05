@@ -19,11 +19,11 @@ class LoggerStatusUpdater(StatusUpdater):
         return cls(logger=on_log, compatible=False)
 
     @classmethod
-    def of_logger(cls, lg: loguru.Logger):
+    def of_logger(cls, lg):
         return cls(logger=lg, compatible=True)
 
     @staticmethod
-    def _on_log_compatible(logger: loguru.Logger | None) -> ON_LOG:
+    def _on_log_compatible(logger: Any) -> ON_LOG:
         """用于兼容早期构造"""
         if logger is None:
             logger = loguru.logger
