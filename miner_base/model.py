@@ -12,10 +12,6 @@ from typing_extensions import TypeVar
 
 from miner_base.exception import *
 
-LOG_LEVEL = Literal['TRACE', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL']
-
-TSK_STATUS = Literal['initialized', 'queued', 'running', 'completed', 'canceled', 'failed']
-
 
 class AgentInfo(TypedDict):
     """用户信息字段"""
@@ -159,6 +155,13 @@ class APICaller(ABC):
             url: StrOrURL,
             **kwargs: Unpack[RequestOptions],
     ) -> "_RequestContextManager": ...
+
+
+LOG_LEVEL = Literal['TRACE', 'DEBUG', 'INFO', 'SUCCESS', 'WARNING', 'ERROR', 'CRITICAL']
+
+TSK_STATUS = Literal['initialized', 'queued', 'running', 'completed', 'canceled', 'failed']
+
+ON_LOG = Callable[[TSK_STATUS | None, LOG_LEVEL, str, dict, Exception | None], None]
 
 
 class StatusUpdater(ABC):

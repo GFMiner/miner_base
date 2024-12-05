@@ -1,30 +1,56 @@
 import json
+from typing import Any
 
-from miner_base import StatusUpdater, TSK_STATUS, LOG_LEVEL
+import loguru
+
+from miner_base import StatusUpdater, TSK_STATUS, LOG_LEVEL, ON_LOG
 
 
 class LoggerStatusUpdater(StatusUpdater):
     """用于Test"""
+    on_log: ON_LOG
 
     def update(self, status: TSK_STATUS | None, level: LOG_LEVEL, msg: str, extra: dict, error: Exception = None):
-        log_msg = json.dumps({'status': status, 'msg': msg, 'extra': extra, 'error': str(error)},ensure_ascii=False)
-        if self.logger is print:
-            print(log_msg)
-            return
-        if level == 'DEBUG':
-            self.logger.debug(log_msg)
-        elif level == 'INFO':
-            self.logger.info(log_msg)
-        elif level == 'SUCCESS':
-            self.logger.success(log_msg)
-        elif level == 'WARNING':
-            self.logger.warning(log_msg)
-        elif level == 'ERROR':
-            self.logger.error(log_msg)
-        elif level == 'CRITICAL':
-            self.logger.critical(log_msg)
+        self.on_log(status, level, msg, extra, error)
         pass
 
-    def __init__(self, logger):
+    @classmethod
+    def of(cls, on_log: ON_LOG):
+        return cls(logger=on_log, compatible=False)
+
+    @classmethod
+    def of_logger(cls, lg: loguru.Logger):
+        return cls(logger=lg, compatible=True)
+
+    @staticmethod
+    def _on_log_compatible(logger: loguru.Logger | None) -> ON_LOG:
+        """用于兼容早期构造"""
+        if logger is None:
+            logger = loguru.logger
+        if logger is print:
+            logger = print
+
+        def on_log(status: TSK_STATUS | None, level: LOG_LEVEL, msg: str, extra: dict, error: Exception = None):
+            _m = json.dumps({'status': status, 'msg': msg, 'extra': extra, 'error': str(error)}, ensure_ascii=False)
+            if level == 'DEBUG':
+                logger.debug(_m)
+            elif level == 'INFO':
+                logger.info(_m)
+            elif level == 'SUCCESS':
+                logger.success(_m)
+            elif level == 'WARNING':
+                logger.warning(_m)
+            elif level == 'ERROR':
+                logger.error(_m)
+            elif level == 'CRITICAL':
+                logger.critical(_m)
+
+        return on_log
+        pass
+
+    def __init__(self, logger: ON_LOG | Any, compatible=True):
         """可以传入 print ,直接打印到cli"""
-        self.logger = logger
+        if compatible:
+            self.on_log = self._on_log_compatible(logger)
+        else:
+            self.on_log = logger
