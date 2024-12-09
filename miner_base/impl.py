@@ -27,24 +27,26 @@ class LoggerStatusUpdater(StatusUpdater):
         """用于兼容早期构造"""
         if logger is None:
             logger = loguru.logger
-        if logger is print:
-            logger = print
 
-        def on_log(status: TSK_STATUS | None, level: LOG_LEVEL, msg: str, extra: dict, error: Exception = None):
-            _m = json.dumps({'status': status, 'msg': msg, 'extra': extra, 'error': str(error)}, ensure_ascii=False)
-            if level == 'DEBUG':
-                logger.debug(_m)
-            elif level == 'INFO':
-                logger.info(_m)
-            elif level == 'SUCCESS':
-                logger.success(_m)
-            elif level == 'WARNING':
-                logger.warning(_m)
-            elif level == 'ERROR':
-                logger.error(_m)
-            elif level == 'CRITICAL':
-                logger.critical(_m)
-
+            def on_log(status: TSK_STATUS | None, level: LOG_LEVEL, msg: str, extra: dict, error: Exception = None):
+                _m = json.dumps({'status': status, 'msg': msg, 'extra': extra, 'error': str(error)}, ensure_ascii=False)
+                if level == 'DEBUG':
+                    logger.debug(_m)
+                elif level == 'INFO':
+                    logger.info(_m)
+                elif level == 'SUCCESS':
+                    logger.success(_m)
+                elif level == 'WARNING':
+                    logger.warning(_m)
+                elif level == 'ERROR':
+                    logger.error(_m)
+                elif level == 'CRITICAL':
+                    logger.critical(_m)
+        else:  # elif logger is print:
+            def on_log(status: TSK_STATUS | None, level: LOG_LEVEL, msg: str, extra: dict, error: Exception = None):
+                _m = json.dumps({'lv': level, 'st': status, 'msg': msg, 'extra': extra, 'error': str(error)},
+                                ensure_ascii=False)
+                print(_m)
         return on_log
         pass
 
