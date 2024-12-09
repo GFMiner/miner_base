@@ -27,7 +27,7 @@ class AgentInfo(TypedDict):
 class TgSessionArgs(TypedDict):
     id: str | int
     session_name: str
-    proxy_ip: str
+    proxy_ip: str | None
     agent_info: AgentInfo
 
 
